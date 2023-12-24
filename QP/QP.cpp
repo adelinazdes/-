@@ -39,12 +39,12 @@ struct pipe
 
 
 double pressure(struct pipe myPipe) {
-    ofstream outFile("pressure2.csv");
+    ofstream outFile("pressure.csv");
     double p_0 = myPipe.p_0;
     double p_L;
-    outFile << p_0 << "\n";
+    outFile << p_0 << "\n"; //начальное значение давления в трубе
     for (int i = 0; i < myPipe.n; ++i) {
-        p_L = p_0 + myPipe.h * (-4 / myPipe.D * myPipe.t_w - myPipe.ro * M_G * (myPipe.z_L - myPipe.z_0) / ((myPipe.n - 1) * myPipe.h));
+        p_L = p_0 + myPipe.h * (-4 / myPipe.D * myPipe.t_w - myPipe.ro * M_G * (myPipe.z_L - myPipe.z_0) / ((myPipe.n - 1) * myPipe.h)); //след.значение давления в трубе
         outFile << p_L << "\n";
         p_0 = p_L;
     }

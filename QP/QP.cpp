@@ -34,11 +34,11 @@ struct pipe
         n,//кол-во шагов стеки
         t_w,//касательное напряжение трения
         h; //шаг по координате расчетной сетки, в метрах
-      
+
 };
 
 
-double pressure(struct pipe myPipe) {
+double pressure_EULER(struct pipe myPipe) {
     ofstream outFile("pressure.csv");
     double p_0 = myPipe.p_0;
     double p_L;
@@ -52,7 +52,13 @@ double pressure(struct pipe myPipe) {
     return p_L;
 }
 
+double pressure_BERNULLI(struct pipe myPipe) {
+    double  p_0;
+    double p_L= 0.6e6;
+    p_0 = (p_L / (myPipe.ro * M_G) - myPipe.z_0 + myPipe.z_L + myPipe.lambda * (myPipe.L / myPipe.D) * pow(myPipe.V, 2) / (2 * M_G)) * (myPipe.ro * M_G);
 
+    return p_0;
+}
 
 int main()
 {
@@ -80,8 +86,8 @@ int main()
     Re = myPipe.V * myPipe.D / myPipe.u;
     double relative_roughness = myPipe.abc / myPipe.D;    //вычисляем относ.шероховатость
     myPipe.lambda = hydraulic_resistance_isaev(Re, relative_roughness);
-    myPipe.t_w = myPipe.lambda / 8 * myPipe.ro * pow(myPipe.V,2);
+    myPipe.t_w = myPipe.lambda / 8 * myPipe.ro * pow(myPipe.V, 2);
 
-    double p_L = pressure(myPipe);   //присваиваем значения из функции pressure
+    double p_L = pressure_EULER(myPipe);   //присваиваем значения из функции pressure
 
 }

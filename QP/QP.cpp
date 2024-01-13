@@ -160,13 +160,21 @@ using fixed_system_t<1>::var_type; public:
         double Re = v * pipe_dannye.D / pipe_dannye.u;
         double lambda = hydraulic_resistance_isaev(pipe_dannye.Re, pipe_dannye.relative_roughness);
         double t_w = lambda / 8 * pipe_dannye.ro * pow(v, 2);
-        double p_0_rachet = pipe_dannye.p_L - pipe_dannye.L * (-4 / pipe_dannye.D * t_w - pipe_dannye.ro * M_G * (pipe_dannye.z_L - pipe_dannye.z_0) / pipe_dannye.L);
-        double delta_p_L;
+        double p_0_rachet;
+        double p_L= pipe_dannye.p_L;
+        //последовательный расчет p_0 по методу Эйлера 
+        for (int i = 0; i < pipe_dannye.n; ++i) {
+            p_0_rachet = p_L - pipe_dannye.h * (-4 / pipe_dannye.D * t_w - pipe_dannye.ro * M_G * (pipe_dannye.z_L - pipe_dannye.z_0) / ((pipe_dannye.n - 1) * pipe_dannye.h));
+            p_L = p_0_rachet;
+        }
+        
+                
+         double delta_p_0;
                
             return
         {
 
-           delta_p_L =  pipe_dannye.p_0- p_0_rachet
+           delta_p_0 =  pipe_dannye.p_0- p_0_rachet
 
         };
 

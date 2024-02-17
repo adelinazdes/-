@@ -464,7 +464,6 @@ TEST(Block_2, Task_5) {
 
 			}
 
-
 			double delta_p_0;
 
 			return

@@ -71,7 +71,9 @@ struct pipe
 };
 
 
-
+struct massiv {
+	vector<double> znachenia;
+};
 
 
 //ЗАДАЧА 5
@@ -299,42 +301,46 @@ TEST(zadacha_5, QP_Newton_Euler) {
 	myPipe.h = myPipe.L / myPipe.n;
 	myPipe.lambda = hydraulic_resistance_isaev(myPipe.get_Re(), myPipe.get_relative_roughness());
 	
+
+	massiv pressure;
+	pressure.znachenia = vector<double>(myPipe.n);
+
+
 	//Классическая задача PP, но вместо простой итерации задействуем метод Ньютона
 
-	vector<double> massiv_p_l;
 
 	class QP_Newton_Euler : public fixed_system_t<1>
 	{
 		/// @brief Ссылка на структуру с параметрами трубы 
 		const  pipe& pipe_dannye;
-		vector<double>& massiv_dannye;
+		massiv& massiv_dannye;
 
 	using fixed_system_t<1>::var_type; public:
 		/// @brief Констуктор
 		/// @param pipe Ссылка на сущность трубы 
 		/// @param problem Ссылка на сущность с условием задачи
-		QP_Newton_Euler(const pipe& pipe_dannye, vector<double>& massiv_dannye) : pipe_dannye{ pipe_dannye }, massiv_dannye{ massiv_dannye } {};
+		QP_Newton_Euler(const pipe& pipe_dannye, massiv& massiv_dannye) : pipe_dannye{ pipe_dannye }, massiv_dannye{ massiv_dannye } {};
 
 		/// @brief Функция невязок - все члены уравнения Бернулли в правой части 
 		/// @param v - скорость течения нефти, [м/с] 
 		/// @return Значение функции невязок при заданной скорости 
 		var_type residuals(const var_type& v)
 		{ //v - искомая скорость
-			double lambda = hydraulic_resistance_isaev(pipe_dannye.get_Re(), pipe_dannye.get_relative_roughness());
+			double Re = v * pipe_dannye.get_inner_diameter()/ pipe_dannye.u;
+			double lambda = hydraulic_resistance_isaev(Re, pipe_dannye.get_relative_roughness());
 			double t_w = lambda / 8 * pipe_dannye.ro * pow(v, 2);
 			double p_0_rachet;
 			double p_L = pipe_dannye.p_L;
 			//последовательный расчет p_0 по методу Эйлера 
-			for (int n = 0; n < pipe_dannye.n; ++n) {
+			
+			for (int i = 0; i < pipe_dannye.n; ++i) {
+				p_0_rachet = p_L - pipe_dannye.h * (-4 / pipe_dannye.get_inner_diameter() * t_w - pipe_dannye.ro * M_G * (pipe_dannye.z_L - pipe_dannye.z_0) / ((pipe_dannye.n - 1) * pipe_dannye.h));
+				p_L = p_0_rachet;
+				massiv_dannye.znachenia[i] = p_0_rachet;
 
-				for (int i = 0; i < pipe_dannye.n; ++i) {
-					p_0_rachet = p_L - pipe_dannye.h * (-4 / pipe_dannye.get_inner_diameter() * pipe_dannye.get_t_w() - pipe_dannye.ro * M_G * (pipe_dannye.z_L - pipe_dannye.z_0) / ((pipe_dannye.n - 1) * pipe_dannye.h));
-					p_L = p_0_rachet;
-					massiv_dannye[n] = p_0_rachet;
+			};
 
-				}
-
-			}
+			
 
 			double delta_p_0;
 
@@ -350,7 +356,7 @@ TEST(zadacha_5, QP_Newton_Euler) {
 
 	//В качестве аргумента для конструктора передается myPipe
 	// Создание экземпляра класса, который и будет решаемой системой
-	QP_Newton_Euler test(myPipe, massiv_p_l);
+	QP_Newton_Euler test(myPipe, pressure);
 	// Задание настроек решателя по умолчанию
 	fixed_solver_parameters_t<1, 0> parameters;
 	// Создание структуры для записи результатов расчета
@@ -359,5 +365,8 @@ TEST(zadacha_5, QP_Newton_Euler) {
 	// { 1} - Начальное приближение скорости 1 (не 0 - т.к. иначе получается деление на 0)
 	fixed_newton_raphson<1>::solve_dense(test, { 1 }, parameters, & result);
 	cout << "Классическая задача PP поверх Эйлера на методе Ньютона " << " u = " << result.argument << "\n";
+	
+	double abs_error = 1;
+	EXPECT_NEAR(2.5, result.argument, abs_error);
 	
 }

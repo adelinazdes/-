@@ -51,10 +51,23 @@ struct pipe
 		return V*S;
 	}
 
+	
+
+	double get_V () const {
+		double D = get_inner_diameter();
+		return 4 * Q / (3.1415 * pow(D, 2));
+	}
+
 	double get_Re() const {
 		double D = get_inner_diameter();
-		return V * D/u;
+		return get_V() * D / u;
 	}
+	//касательное напряжение трения
+	double get_t_w() const {
+		return lambda / 8 * ro * pow(get_V(), 2);
+	}
+
+	
 };
 
 
@@ -88,14 +101,11 @@ TEST(zadacha_1, QP_LURIE) {
 		myPipe.Q = Q / 3600;
 		myPipe.abc = 15e-6;//шероховатость
 
-		double D = myPipe.get_inner_diameter();
-
-		myPipe.V = 4 * myPipe.Q / (3.1415 * pow(D, 2));      //вычисляем скорость нефти 
-				
+						
 		myPipe.lambda = hydraulic_resistance_isaev(myPipe.get_Re(), myPipe.get_relative_roughness());
 
 		double  p_0;
-		p_0 = (myPipe.p_L / (myPipe.ro * M_G) + myPipe.z_0 - myPipe.z_L + myPipe.lambda * (myPipe.L / D) * pow(myPipe.V, 2) / (2 * M_G)) * (myPipe.ro * M_G);
+		p_0 = (myPipe.p_L / (myPipe.ro * M_G) + myPipe.z_0 - myPipe.z_L + myPipe.lambda * (myPipe.L / myPipe.get_inner_diameter()) * pow(myPipe.get_V(), 2) / (2 * M_G)) * (myPipe.ro * M_G);
 
 		cout << "Результат: p_0 = " << p_0 << " Па" << "\n";
 		
@@ -107,11 +117,7 @@ TEST(zadacha_1, QP_LURIE) {
 
 TEST(zadacha_2, PP_ITERAZIA) {
 
-	//Задача Лурье 2
-	//ЗАДАЧА PP КЛАССИЧЕСКАЯ
-	//итерация по Лурье
-
-	
+		
 		pipe myPipe;
 		myPipe.L = 80e3;
 		myPipe.D_vnesh = 720e-3;
@@ -120,12 +126,9 @@ TEST(zadacha_2, PP_ITERAZIA) {
 		myPipe.z_L = 100;
 		myPipe.ro = 870;
 		myPipe.u = 15e-6;
-
 		myPipe.abc = 15e-6;
 
 		double D = myPipe.get_inner_diameter();
-
-		
 
 		ofstream outFile("Q.csv");
 		double p_0 = 5.65e6;
@@ -140,7 +143,7 @@ TEST(zadacha_2, PP_ITERAZIA) {
 			myPipe.V = sqrt(((p_0 / (myPipe.ro * M_G) - (p_L / (myPipe.ro * M_G) + myPipe.z_0 - myPipe.z_L)) / (lambda_iteraziia * (myPipe.L / D) / (2 * M_G))));
 			cout << "Скорость:   " << myPipe.V << "     " << "\n";
 			double Re = myPipe.V * D / myPipe.u;
-			myPipe.lambda = hydraulic_resistance_isaev(myPipe.get_Re(), myPipe.get_relative_roughness());
+			myPipe.lambda = hydraulic_resistance_isaev(Re, myPipe.get_relative_roughness());
 			outFile << "коэфф.гидравл.сопротивления" << lambda_iteraziia << "\n"; //начальное значение давления в трубе
 
 		}
@@ -148,9 +151,9 @@ TEST(zadacha_2, PP_ITERAZIA) {
 		myPipe.V = sqrt(((p_0 / (myPipe.ro * M_G) - (p_L / (myPipe.ro * M_G) + myPipe.z_0 - myPipe.z_L)) / (lambda_iteraziia * (myPipe.L / D)) * (2 * M_G)));
 		outFile << "скорость, м2/с:   " << myPipe.V / 4 << "\n";
 		outFile << "расход, м3/с:   " << myPipe.get_inner_area() << "\n";
-		outFile << "расход, м3/ч:   " << myPipe.get_inner_area()/ 3600 << "\n";
+		outFile << "расход, м3/ч:   " << myPipe.get_inner_area()* 3600 << "\n";
 		outFile.close();
-		double Q_iteraziia = myPipe.get_inner_area()/3600;
+		double Q_iteraziia = myPipe.get_inner_area()*3600;
 		cout << "Расход:   " << Q_iteraziia << "  м3/ч   " << "\n";
 
 			
@@ -165,7 +168,6 @@ TEST(zadacha_3, QP_EULER) {
 	
 	//Решение классической задачи QP за счет численного интегрирования дифференциального уравнения методом Эйлера
 		
-		//Данные по трубопроводу в СИ
 		pipe myPipe;
 		myPipe.p_0 = 5.65e6;
 		myPipe.L = 80e3;
@@ -181,17 +183,15 @@ TEST(zadacha_3, QP_EULER) {
 		myPipe.n = 100;
 		myPipe.h = myPipe.L / myPipe.n;
 		
-		myPipe.V = 4 * myPipe.Q / (3.1415 * pow(myPipe.get_inner_diameter(), 2));      //вычисляем скорость нефти 
-		
+				
 		myPipe.lambda = hydraulic_resistance_isaev(myPipe.get_Re(), myPipe.get_relative_roughness());
-		myPipe.t_w = myPipe.lambda / 8 * myPipe.ro * pow(myPipe.V, 2);
-
+	
 		ofstream outFile("pressure.csv");
 		double p_0 = myPipe.p_0;
 		double p_L;
 		outFile << p_0 << "\n"; //начальное значение давления в трубе
 		for (int i = 0; i < myPipe.n; ++i) {
-			p_L = p_0 + myPipe.h * (-4 / myPipe.get_inner_diameter() * myPipe.t_w - myPipe.ro * M_G * (myPipe.z_L - myPipe.z_0) / ((myPipe.n - 1) * myPipe.h)); //след.значение давления в трубе
+			p_L = p_0 + myPipe.h * (-4 / myPipe.get_inner_diameter() * myPipe.get_t_w() - myPipe.ro * M_G * (myPipe.z_L - myPipe.z_0) / ((myPipe.n - 1) * myPipe.h)); //след.значение давления в трубе
 			outFile << p_L << "\n";
 			p_0 = p_L;
 		}
@@ -222,11 +222,11 @@ TEST(zadacha_4, PP_NEWTON) {
 	myPipe.Q = Q / 3600;
 	myPipe.abc = 15e-6;
 	myPipe.n = 100;
-	myPipe.t_w = 0;
+	
 	myPipe.h = myPipe.L / myPipe.n;
-	myPipe.V = 4 * myPipe.Q / (3.1415 * pow(myPipe.get_inner_diameter(), 2));      //вычисляем скорость нефти 
+	
 	myPipe.lambda = hydraulic_resistance_isaev(myPipe.get_Re(), myPipe.get_relative_roughness());
-	myPipe.t_w = myPipe.lambda / 8 * myPipe.ro * pow(myPipe.V, 2);
+	
 	class QP_Newton : public fixed_system_t<1>
 	{
 		/// @brief Ссылка на структуру с параметрами трубы 
@@ -266,6 +266,7 @@ TEST(zadacha_4, PP_NEWTON) {
 	// Решение системы нелинейныйх уравнений <1> с помощью решателя Ньютона - Рафсона
 	// { 0, 0 } - Начальное приближение
 	fixed_newton_raphson<1>::solve_dense(test, { 1 }, parameters, & result);
+	myPipe.V = myPipe.get_V();
 	cout << "Скорость изначальная " << " u = " << myPipe.V << '\n' << "Классическая задача PP поверх метода Эйлера " << " u = " << result.argument << '\n' << "Расход " << "Q = " << result.argument * (3.14 * pow(myPipe.get_inner_diameter(), 2)) / 4 * 3600 << " м3/ч " << "\n";
 	
 	double u = result.argument;
@@ -293,12 +294,11 @@ TEST(zadacha_5, QP_Newton_Euler) {
 	myPipe.Q = Q / 3600;
 	myPipe.abc = 15e-6;
 	myPipe.n = 100;
-	myPipe.t_w = 0;
-	myPipe.h = myPipe.L / myPipe.n;
 	
+
+	myPipe.h = myPipe.L / myPipe.n;
 	myPipe.lambda = hydraulic_resistance_isaev(myPipe.get_Re(), myPipe.get_relative_roughness());
 	
-	myPipe.t_w = myPipe.lambda / 8 * myPipe.ro * pow(myPipe.V, 2);
 	//Классическая задача PP, но вместо простой итерации задействуем метод Ньютона
 
 	vector<double> massiv_p_l;
@@ -328,7 +328,7 @@ TEST(zadacha_5, QP_Newton_Euler) {
 			for (int n = 0; n < pipe_dannye.n; ++n) {
 
 				for (int i = 0; i < pipe_dannye.n; ++i) {
-					p_0_rachet = p_L - pipe_dannye.h * (-4 / pipe_dannye.get_inner_diameter() * t_w - pipe_dannye.ro * M_G * (pipe_dannye.z_L - pipe_dannye.z_0) / ((pipe_dannye.n - 1) * pipe_dannye.h));
+					p_0_rachet = p_L - pipe_dannye.h * (-4 / pipe_dannye.get_inner_diameter() * pipe_dannye.get_t_w() - pipe_dannye.ro * M_G * (pipe_dannye.z_L - pipe_dannye.z_0) / ((pipe_dannye.n - 1) * pipe_dannye.h));
 					p_L = p_0_rachet;
 					massiv_dannye[n] = p_0_rachet;
 
